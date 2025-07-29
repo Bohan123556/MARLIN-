@@ -1,9 +1,8 @@
 from typing import *
 from enum import Enum
 from typing import *
-
 from src.llms.llm_primitives import LLM_API, Gemini
-
+from src.llms.llm_primitives import LLamaAPI
 
 class Negotiation:
   class Exit_Code(Enum):
@@ -144,12 +143,17 @@ if __name__ == "__main__":
     You are {s}. Talk to others and then decide what to do. Write your name next to all of your answers
   """
 
-  alice = Gemini(sys_prompt("Alice"), "GOOGLE_API_KEY", "gemini-1.5-flash", stop_sequences = ["~DONE", "~END"],
-                 instance_name = "Alice", functions = [set_light_colour])
-  bob = Gemini(sys_prompt("Bob"), "GOOGLE_API_KEY", "gemini-1.5-flash", stop_sequences = ["~DONE", "~END"],
-               instance_name = "Bob", functions = [set_light_colour])
-  charlie = Gemini(sys_prompt("Charlie"), "GOOGLE_API_KEY", "gemini-1.5-flash", stop_sequences = ["~DONE", "~END"],
-                   instance_name = "Charlie", functions = [set_light_colour])
+  #alice = Gemini(sys_prompt("Alice"), "GOOGLE_API_KEY", "gemini-1.5-flash", stop_sequences = ["~DONE", "~END"],
+                # instance_name = "Alice", functions = [set_light_colour])
+  #bob = Gemini(sys_prompt("Bob"), "GOOGLE_API_KEY", "gemini-1.5-flash", stop_sequences = ["~DONE", "~END"],
+              # instance_name = "Bob", functions = [set_light_colour])
+  #charlie = Gemini(sys_prompt("Charlie"), "GOOGLE_API_KEY", "gemini-1.5-flash", stop_sequences = ["~DONE", "~END"],
+                   #instance_name = "Charlie", functions = [set_light_colour])
+  llama_model_path = "/home/bohan/llama_models/tinyllama/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"  
+
+  alice = LLamaAPI("Alice", sys_prompt("Alice"), model_path=llama_model_path, instance_name="Alice")
+  bob = LLamaAPI("Bob", sys_prompt("Bob"), model_path=llama_model_path, instance_name="Bob")
+  charlie = LLamaAPI("Charlie", sys_prompt("Charlie"), model_path=llama_model_path, instance_name="Charlie")
   llms = [alice, bob, charlie]
 
   n = Negotiation(llms, 5, exit_clauses = ["@DONE", "@END"], quiet = True)
