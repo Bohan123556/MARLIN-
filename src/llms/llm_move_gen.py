@@ -10,7 +10,7 @@ from src.llms.llm_primitives import GPT, DeepInfra, Gemini
 from src.utils.grid import Grid
 from src.utils.movement import *
 from src.utils.utils import Utils
-
+from src.llms.llm_primitives import LLamaAPI
 
 class LLMMoveGen:
     def __init__(
@@ -102,6 +102,7 @@ class LLMMoveGen:
 
     @retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(3))
     def gen_moves(self, num_moves, translate_moves=False, verbose=False):
+        
         grid_s = "\n".join(Grid.render_grid(Grid.unflatten_grid(self.valid_pos, 3, 8)))
 
         conversation = []
@@ -173,51 +174,63 @@ Once you agree on the actions, respond with:
 
         temp = 0.8
 
-        if "gemini" in self.model:
-            alice = Gemini(
-                sys_prompt("Alice"),
-                self.model,
-                stop_sequences=["~AGREE"],
-                instance_name="Alice",
-                temperature=temp,
-            )
-            bob = Gemini(
-                sys_prompt("Bob"),
-                self.model,
-                stop_sequences=["~AGREE"],
-                instance_name="Bob",
-                temperature=temp,
-            )
-        elif "gpt" in self.model:
-            alice = GPT(
-                sys_prompt("Alice"),
-                self.model,
-                stop_sequences=["~AGREE"],
-                instance_name="Alice",
-                temperature=temp,
-            )
-            bob = GPT(
-                sys_prompt("Bob"),
-                self.model,
-                stop_sequences=["~AGREE"],
-                instance_name="Bob",
-                temperature=temp,
-            )
-        else:
-            alice = DeepInfra(
-                sys_prompt("Alice"),
-                self.model,
-                stop_sequences=["~AGREE"],
-                instance_name="Alice",
-                temperature=temp,
-            )
-            bob = DeepInfra(
-                sys_prompt("Bob"),
-                self.model,
-                stop_sequences=["~AGREE"],
-                instance_name="Bob",
-                temperature=temp,
-            )
+       # if "gemini" in self.model:
+         #   alice = Gemini(
+               # sys_prompt("Alice"),
+               # self.model,
+                #stop_sequences=["~AGREE"],
+               # instance_name="Alice",
+                #temperature=temp,
+           # )
+           # bob = Gemini(
+               # sys_prompt("Bob"),
+               # self.model,
+               # stop_sequences=["~AGREE"],
+               # instance_name="Bob",
+               # temperature=temp,
+           # )
+       # elif "gpt" in self.model:
+           # alice = GPT(
+                #sys_prompt("Alice"),
+               # self.model,
+                #stop_sequences=["~AGREE"],
+               # instance_name="Alice",
+                #temperature=temp,
+            #)
+            #bob = GPT(
+                #sys_prompt("Bob"),
+                #self.model,
+                #stop_sequences=["~AGREE"],
+                #instance_name="Bob",
+                #temperature=temp,
+            #)
+        #else:
+            #alice = DeepInfra(
+               # sys_prompt("Alice"),
+               # self.model,
+               # stop_sequences=["~AGREE"],
+               # instance_name="Alice",
+                #temperature=temp,
+            #)
+           # bob = DeepInfra(
+                #sys_prompt("Bob"),
+               # self.model,
+               # stop_sequences=["~AGREE"],
+               # instance_name="Bob",
+               # temperature=temp,
+           # )
+        alice = LLamaAPI(
+           system_prompt=sys_prompt("Alice"),
+           model_path=self.model,  
+           instance_name="Alice",
+           stop_sequences=["~AGREE"],
+           temperature=temp,)
+        bob = LLamaAPI(
+           system_prompt=sys_prompt("Bob"),
+           model_path=self.model,
+           instance_name="Bob",
+           stop_sequences=["~AGREE"],
+           temperature=temp,)
 
         llms = [alice, bob]
 
@@ -251,6 +264,10 @@ Once you agree on the actions, respond with:
 
             for s in content:
                 self._write_conversation(s)
+            final_llm = None
+
+            #alice_move = move.get("alice", "@WAIT")
+            #bob_move = move.get("bob", "@WAIT")
 
             # print(res)
 
@@ -289,7 +306,6 @@ Once you agree on the actions, respond with:
             #           GPT(summariser_sys_prompt, self.model, instance_name = "summariser", temperature = 0.75).query(
             #               f"What move was agreed for Bob to take?\n\n{bob_history}")[0]
 
-            final_llm = None
             if "@AGREE" in alice.get_last_message_text():
                 final_llm = alice
             elif "@AGREE" in bob.get_last_message_text():
@@ -304,6 +320,12 @@ Once you agree on the actions, respond with:
                     final_llm = bob
                 else:
                     print("ERROR: No moves agreed")
+            if final_llm is None:
+               print("ERROR: No moves agreed. Using fallback @WAIT actions.")
+               response = "Agreed Alice Action: @WAIT\nAgreed Bob Action: @WAIT\n@AGREE ~AGREE"
+            else:
+               response = final_llm.get_last_message_text()
+            move = safe_extract_move(response)
 
             alice_move = "@WAIT"
             bob_move = "@WAIT"
@@ -473,7 +495,7 @@ Once you agree on the actions, respond with:
         while True:
             filename = f"{self.scenario.name}_{formatted_time}_{counter}.txt"
             path = os.path.join(
-                "/home/toby/projects/uni/internship/Hybrid_LLM_MARL/conversations", filename
+                "/home/bohan/Downloads/MARLIN-main/output/conversations/", filename
             )
             try:
                 print(f"Trying to write to {path}")
